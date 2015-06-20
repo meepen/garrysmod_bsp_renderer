@@ -17,6 +17,9 @@ concommand.Add("drawmap", function(p,_,_,s)
 	local self = parse.new("bsp", "maps/"..s..".bsp");
 	print("decode: ", ("%.6f"):format(time() - t));
 	
+	local material_mesh_lookup = {};
+	local material_list = {};
+	
 	local l7  = self:GetLump(7);
 	local l13 = self:GetLump(13);
 	local l12 = self:GetLump(12);
@@ -28,36 +31,64 @@ concommand.Add("drawmap", function(p,_,_,s)
 		if(l6.data[v.textureinfo].texdata.name:sub(1,6):lower() == "tools/") then continue; end
 		local mat = l6.data[v.textureinfo]:GetMaterial(divisor);
 		
-		local _mesh = Mesh();
-			
-		meshes[#meshes + 1] = _mesh;
-		materials[#meshes] = mat;
-		mesh.Begin(_mesh, MATERIAL_POLYGON, v.numedges);
+		material_list[l6.data[v.textureinfo].texdata.name] = material_list[l6.data[v.textureinfo].texdata.name] or {};
+		table.insert(material_list[l6.data[v.textureinfo].texdata.name], v);
 		
+	end
+	
+	for _, coal in next, material_list, nil do
+	
+		local _mesh = Mesh();
+		local mat = l6.data[coal[1].textureinfo];
+		
+		meshes[#meshes + 1] = _mesh;
+		materials[#meshes] = mat:GetMaterial(divisor);
+		
+		local amt = 0;
+		for i = 1, #coal do
+			local v = coal[i];
+			amt = amt + v.numedges - 2;
+		end
+		
+		mesh.Begin(_mesh, MATERIAL_TRIANGLES, amt);
+		for i = 1, #coal do
+			local v = coal[i];
+					
+			local last,first;
 			for i = 0, v.numedges - 1 do
-			
+				
+				
+				
 				local edgeidx = l13.data[v.firstedge + i];
 				
 				local edgesidx = l12.data[edgeidx[1]];
 				
 				local edge1, edge2 = l3.data[edgesidx[0]], self:GetLump(3).data[edgesidx[1]];
 				
-				if(not edge1 or not edge2) then continue; end
+				local whatiwant = edgeidx[2] and edge2 or edge1;
+				if(not whatiwant) then continue; end
 				
-				if(not edgeidx[2]) then
-					mesh.TexCoord(0, l6.data[v.textureinfo]:GenerateUV(edge1.x, edge1.y, edge1.z, divisor));
-					edge1 = edge1 / divisor;
-					mesh.Position(edge1);
-					mesh.AdvanceVertex();
-				else
-					mesh.TexCoord(0, l6.data[v.textureinfo]:GenerateUV(edge2.x, edge2.y, edge2.z, divisor));
-					edge2 = edge2 / divisor;
-					mesh.Position(edge2);
-					mesh.AdvanceVertex();
-				end
+				if(not first) then first = whatiwant / divisor; continue; end
+				if(not last) then last = whatiwant / divisor; continue; end
+				
+				
+				mesh.TexCoord(0, mat:GenerateUV(first.x, first.y, first.z, divisor));
+				mesh.Position(first);
+				mesh.AdvanceVertex();
+				mesh.TexCoord(0, mat:GenerateUV(last.x, last.y, last.z, divisor));
+				mesh.Position(last);
+				mesh.AdvanceVertex();
+				
+				mesh.TexCoord(0, mat:GenerateUV(whatiwant.x, whatiwant.y, whatiwant.z, divisor));
+				whatiwant = whatiwant / divisor;
+				mesh.Position(whatiwant);
+				mesh.AdvanceVertex();
+				
+				last = whatiwant;
 			
 			end
-		
+			
+		end
 		mesh.End();
 	end
 	
@@ -66,12 +97,12 @@ concommand.Add("drawmap", function(p,_,_,s)
 			local e = ClientsideModel(v.model);
 			e:Spawn();
 			e:SetNoDraw(true);
-			print(v.origin, util.StringToType(v.origin, "Vector") / divisor);
+			
 			e:SetRenderOrigin(util.StringToType(v.origin, "Vector") / divisor);
 			e:SetRenderAngles(util.StringToType(v.angles, "Angle"));
 			e:SetModelScale(1/divisor, 0);
 			e:SetSkin(tonumber(v.skin or 0) or 0);
-			print(v.model);
+			
 			ents[#ents + 1] = e;
 			
 		end
