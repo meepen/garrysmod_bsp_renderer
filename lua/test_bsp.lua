@@ -79,8 +79,8 @@ concommand.Add("drawmap", function(p,_,_,s)
 				mesh.Position(last);
 				mesh.AdvanceVertex();
 				
-				mesh.TexCoord(0, mat:GenerateUV(whatiwant.x, whatiwant.y, whatiwant.z, divisor));
 				whatiwant = whatiwant / divisor;
+				mesh.TexCoord(0, mat:GenerateUV(whatiwant.x, whatiwant.y, whatiwant.z, divisor));
 				mesh.Position(whatiwant);
 				mesh.AdvanceVertex();
 				
@@ -95,7 +95,6 @@ concommand.Add("drawmap", function(p,_,_,s)
 	for k,v in next, self:GetLump(0).data do
 		if(v.model and v.origin and v.angles) then
 			local e = ClientsideModel(v.model);
-			e:Spawn();
 			e:SetNoDraw(true);
 			
 			e:SetRenderOrigin(util.StringToType(v.origin, "Vector") / divisor);
@@ -104,15 +103,37 @@ concommand.Add("drawmap", function(p,_,_,s)
 			e:SetSkin(tonumber(v.skin or 0) or 0);
 			
 			ents[#ents + 1] = e;
+			e:Spawn();
 			
 		end
 	end
+	
+end);
+
+local nmeshes = 0;
+local time = 0;
+local entities = 0;
+local meshtime = 0;
+local entitytime = 0;
+local lasttime = SysTime();
+local updatetime = .25;
+
+hook.Add("HUDPaint", "", function()
+	
+	surface.SetTextColor(255,255,255,255);
+	surface.SetFont("BudgetLabel");
+	surface.SetTextPos(3,2);
+	surface.DrawText(("render time: %.6f (%i meshes, %i entities)"):format(time, nmeshes, entities));
+	surface.SetTextPos(2,10);
+	surface.DrawText(("mesh time: %.6f, entity time: %.6f"):format(meshtime, entitytime));
 	
 end);
 	
 hook.Add("PreDrawOpaqueRenderables", "", function()
 	if(not ang) then ang = Angle(0,0,0); end
 	if(not pos) then return; end
+	local t = SysTime();
+	local et, mt;
 	ang.y = math.NormalizeAngle(ang.y + 50 * FrameTime());
 	render.PushFilterMag(TEXFILTER.ANISOTROPIC);
 	render.PushFilterMin(TEXFILTER.ANISOTROPIC);
@@ -124,21 +145,40 @@ hook.Add("PreDrawOpaqueRenderables", "", function()
 		change_pos:Rotate(change_ang);
 		
 		cam.Start3D(change_pos, EyeAngles() + change_ang);
+			mt = SysTime();
 			for i = 1, #meshes do
 				
 				render.SetMaterial(materials[i]);
 				meshes[i]:Draw();
 				
 			end
+			
+			mt = SysTime() - mt;
+			
+			et = SysTime();
 			for i = 1, #ents do
 				local v = ents[i];
 				v:SetNoDraw(false); -- do i have to do this?
 				v:DrawModel();
 				v:SetNoDraw(true);
 			end
+			et = SysTime() - et;
 		cam.End3D();
 		
 	render.SetLightingMode(0);
 	render.PopFilterMin();
 	render.PopFilterMag();
+	
+	t = SysTime() - t;
+	
+	if(SysTime() - lasttime > updatetime) then
+		nmeshes = #meshes;
+		entities = #ents;
+		time = t;
+		entitytime = et;
+		meshtime = mt;
+		lasttime = SysTime();
+		
+	end
+	
 end);
