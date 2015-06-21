@@ -11,10 +11,12 @@ function tex:MakeMaterial()
 	self.w = self.texdata.w;
 	self.h = self.texdata.h;
 	
+	print(self.texdata.name);
+	
 	self.Material = CreateMaterial(tostring(self).."_texinfo", "UnlitGeneric",
 	{
 		["$basetexture"] = Material(self.texdata.name):GetTexture("$basetexture"):GetName(),
-		["$detailscale"] = 0,
+		["$detailscale"] = 1,
 		["$reflectivity"] = self.texdata.reflectivity,
 		["$model"] = 1,
 	});
@@ -23,9 +25,11 @@ function tex:MakeMaterial()
 end
 
 function tex:GenerateUV(x,y,z, divisor)
+	--[[
 	z=z*divisor;
 	y=y*divisor;
 	x=x*divisor;
+	]]
 	return (self.vecs[0][3] + self.vecs[0][2] * z + self.vecs[0][1] * y + self.vecs[0][0] * x) / self.texdata.w,
 		(self.vecs[1][3] + self.vecs[1][2] * z + self.vecs[1][1] * y + self.vecs[1][0] * x) / self.texdata.h;
 end

@@ -31,12 +31,15 @@ concommand.Add("drawmap", function(p,_,_,s)
 		if(l6.data[v.textureinfo].texdata.name:sub(1,6):lower() == "tools/") then continue; end
 		local mat = l6.data[v.textureinfo]:GetMaterial(divisor);
 		
-		material_list[l6.data[v.textureinfo].texdata.name] = material_list[l6.data[v.textureinfo].texdata.name] or {};
-		table.insert(material_list[l6.data[v.textureinfo].texdata.name], v);
+		local name = l6.data[v.textureinfo].texdata.name;
+		material_list[name] = material_list[name] or {};
+		material_list[name][tostring(v.plane.normal)] = material_list[name][tostring(v.plane.normal)] or {};
+		table.insert(material_list[name][tostring(v.plane.normal)], v);
 		
 	end
 	
-	for _, coal in next, material_list, nil do
+	for _, coal2 in next, material_list, nil do
+	for _, coal in next, coal2 do
 	
 		local _mesh = Mesh();
 		local mat = l6.data[coal[1].textureinfo];
@@ -68,20 +71,20 @@ concommand.Add("drawmap", function(p,_,_,s)
 				local whatiwant = edgeidx[2] and edge2 or edge1;
 				if(not whatiwant) then continue; end
 				
-				if(not first) then first = whatiwant / divisor; continue; end
-				if(not last) then last = whatiwant / divisor; continue; end
+				if(not first) then first = whatiwant; continue; end
+				if(not last) then last = whatiwant; continue; end
 				
 				
 				mesh.TexCoord(0, mat:GenerateUV(first.x, first.y, first.z, divisor));
-				mesh.Position(first);
-				mesh.AdvanceVertex();
-				mesh.TexCoord(0, mat:GenerateUV(last.x, last.y, last.z, divisor));
-				mesh.Position(last);
+				mesh.Position(first / divisor);
 				mesh.AdvanceVertex();
 				
-				whatiwant = whatiwant / divisor;
+				mesh.TexCoord(0, mat:GenerateUV(last.x, last.y, last.z, divisor));
+				mesh.Position(last / divisor);
+				mesh.AdvanceVertex();
+				
 				mesh.TexCoord(0, mat:GenerateUV(whatiwant.x, whatiwant.y, whatiwant.z, divisor));
-				mesh.Position(whatiwant);
+				mesh.Position(whatiwant / divisor);
 				mesh.AdvanceVertex();
 				
 				last = whatiwant;
@@ -90,6 +93,7 @@ concommand.Add("drawmap", function(p,_,_,s)
 			
 		end
 		mesh.End();
+	end
 	end
 	
 	for k,v in next, self:GetLump(0).data do
@@ -134,10 +138,10 @@ hook.Add("PreDrawOpaqueRenderables", "", function()
 	if(not pos) then return; end
 	local t = SysTime();
 	local et, mt;
-	ang.y = math.NormalizeAngle(ang.y + 50 * FrameTime());
-	render.PushFilterMag(TEXFILTER.ANISOTROPIC);
-	render.PushFilterMin(TEXFILTER.ANISOTROPIC);
-	render.SetLightingMode(2);
+	ang.y = math.NormalizeAngle(ang.y + 0 * FrameTime());
+	--render.PushFilterMag(TEXFILTER.ANISOTROPIC);
+	--render.PushFilterMin(TEXFILTER.ANISOTROPIC);
+	--render.SetLightingMode(2);
 		
 		local change_pos, change_ang;
 		change_ang = ang;
@@ -165,9 +169,9 @@ hook.Add("PreDrawOpaqueRenderables", "", function()
 			et = SysTime() - et;
 		cam.End3D();
 		
-	render.SetLightingMode(0);
-	render.PopFilterMin();
-	render.PopFilterMag();
+	--render.SetLightingMode(0);
+	--render.PopFilterMin();
+	--render.PopFilterMag();
 	
 	t = SysTime() - t;
 	
