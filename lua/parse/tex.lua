@@ -24,12 +24,7 @@ function tex:MakeMaterial()
 	return self.Material;
 end
 
-function tex:GenerateUV(x,y,z, divisor)
-	--[[
-	z=z*divisor;
-	y=y*divisor;
-	x=x*divisor;
-	]]
+function tex:GenerateUV(x,y,z)
 	return (self.vecs[0][3] + self.vecs[0][2] * z + self.vecs[0][1] * y + self.vecs[0][0] * x) / self.texdata.w,
 		(self.vecs[1][3] + self.vecs[1][2] * z + self.vecs[1][1] * y + self.vecs[1][0] * x) / self.texdata.h;
 end

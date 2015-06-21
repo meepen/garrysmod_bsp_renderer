@@ -7,6 +7,15 @@ local ents = {};
 local divisor = 25; -- 1/4 scale
 local pos, ang;
 
+local function trinorm(p1,p2,p3)
+	local u = p2 - p1;
+	local v = p3 - p1;
+	return Vector(
+		u.y*v.z - u.z*v.y,
+		u.z*v.x - u.x*v.z,
+		u.x*v.y - u.y*v.x
+	);
+end
 
 concommand.Add("drawmap", function(p,_,_,s)
 	meshes = {};
@@ -32,14 +41,18 @@ concommand.Add("drawmap", function(p,_,_,s)
 		local mat = l6.data[v.textureinfo]:GetMaterial(divisor);
 		
 		local name = l6.data[v.textureinfo].texdata.name;
+		name = name.." "..tostring(v.w).." "..tostring(v.h).." "..tostring(v.plane.normal);
 		material_list[name] = material_list[name] or {};
-		material_list[name][tostring(v.plane.normal)] = material_list[name][tostring(v.plane.normal)] or {};
-		table.insert(material_list[name][tostring(v.plane.normal)], v);
+		--local str = tostring(v.plane.normal);
+		--material_list[name][str] = material_list[name][str] or {};
+		table.insert(material_list[name], v);
 		
 	end
 	
-	for _, coal2 in next, material_list, nil do
-	for _, coal in next, coal2 do
+	local light_normal = Vector(0,0,0);
+	
+	for _, coal in next, material_list, nil do
+		local triangles = {};
 	
 		local _mesh = Mesh();
 		local mat = l6.data[coal[1].textureinfo];
@@ -47,20 +60,12 @@ concommand.Add("drawmap", function(p,_,_,s)
 		meshes[#meshes + 1] = _mesh;
 		materials[#meshes] = mat:GetMaterial(divisor);
 		
-		local amt = 0;
-		for i = 1, #coal do
-			local v = coal[i];
-			amt = amt + v.numedges - 2;
-		end
-		
-		mesh.Begin(_mesh, MATERIAL_TRIANGLES, amt);
 		for i = 1, #coal do
 			local v = coal[i];
 					
 			local last,first;
+			local lastr,firstr; -- rotated
 			for i = 0, v.numedges - 1 do
-				
-				
 				
 				local edgeidx = l13.data[v.firstedge + i];
 				
@@ -68,32 +73,64 @@ concommand.Add("drawmap", function(p,_,_,s)
 				
 				local edge1, edge2 = l3.data[edgesidx[0]], self:GetLump(3).data[edgesidx[1]];
 				
-				local whatiwant = edgeidx[2] and edge2 or edge1;
-				if(not whatiwant) then continue; end
+				local whatiwant = edgeidx[2] and edge1 or edge2;
+				local next = edgeidx[2] and edge2 or edge1;
+				if(not whatiwant) then break; end
 				
-				if(not first) then first = whatiwant; continue; end
-				if(not last) then last = whatiwant; continue; end
+				if(not first) then 
+					first = whatiwant; continue;
+				end
+				if(not last) then 
+					last = whatiwant; continue;
+				end
+				
+				local u,v;
+				u,v = mat:GenerateUV(first.x, first.y, first.z);
+				triangles[#triangles + 1] = {
+					pos = first/divisor,
+					u=u,v=v,
+				};
+				
+				u,v = mat:GenerateUV(last.x, last.y, last.z);
+				triangles[#triangles + 1] = {
+					pos = last/divisor,
+					u=u,v=v,
+				};
+				
+				u,v = mat:GenerateUV(whatiwant.x, whatiwant.y, whatiwant.z);
+				triangles[#triangles + 1] = {
+					pos = whatiwant/divisor,
+					u=u,v=v,
+				};
 				
 				
-				mesh.TexCoord(0, mat:GenerateUV(first.x, first.y, first.z, divisor));
-				mesh.Position(first / divisor);
-				mesh.AdvanceVertex();
+				u,v = mat:GenerateUV(first.x, first.y, first.z);
+				triangles[#triangles + 1] = {
+					pos = first/divisor,
+					u=u,v=v,
+				};
 				
-				mesh.TexCoord(0, mat:GenerateUV(last.x, last.y, last.z, divisor));
-				mesh.Position(last / divisor);
-				mesh.AdvanceVertex();
+				u,v = mat:GenerateUV(whatiwant.x, whatiwant.y, whatiwant.z);
+				triangles[#triangles + 1] = {
+					pos = whatiwant/divisor,
+					u=u,v=v,
+				};
 				
-				mesh.TexCoord(0, mat:GenerateUV(whatiwant.x, whatiwant.y, whatiwant.z, divisor));
-				mesh.Position(whatiwant / divisor);
-				mesh.AdvanceVertex();
+				u,v = mat:GenerateUV(next.x, next.y, next.z);
+				triangles[#triangles + 1] = {
+					pos = next/divisor,
+					u=u,v=v,
+				};
 				
-				last = whatiwant;
+				
+				last = next;
+				lastr = next;
+				
 			
 			end
 			
 		end
-		mesh.End();
-	end
+		_mesh:BuildFromTriangles(triangles);
 	end
 	
 	for k,v in next, self:GetLump(0).data do
