@@ -11,8 +11,6 @@ function tex:MakeMaterial()
 	self.w = self.texdata.w;
 	self.h = self.texdata.h;
 	
-	print(self.texdata.name);
-	
 	self.Material = CreateMaterial(tostring(self).."_texinfo", "UnlitGeneric",
 	{
 		["$basetexture"] = Material(self.texdata.name):GetTexture("$basetexture"):GetName(),

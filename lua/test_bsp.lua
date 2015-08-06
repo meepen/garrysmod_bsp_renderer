@@ -17,6 +17,26 @@ local function trinorm(p1,p2,p3)
 	);
 end
 
+local function buildtriangle(triangles, buf, vertex, u, v)
+
+	buf[#buf + 1] = {
+		pos = vertex/divisor, 
+		u   = u, 
+		v   = v,
+	};
+	
+	if(#buf == 3) then
+		for i = 1, 3 do
+			triangles[#triangles + 1] = buf[i];
+		end
+		
+		table.remove(buf, 2);
+		
+	end
+	
+
+end
+
 concommand.Add("drawmap", function(p,_,_,s)
 	meshes = {};
 	materials = {};
@@ -40,8 +60,8 @@ concommand.Add("drawmap", function(p,_,_,s)
 		if(l6.data[v.textureinfo].texdata.name:sub(1,6):lower() == "tools/") then continue; end
 		local mat = l6.data[v.textureinfo]:GetMaterial(divisor);
 		
-		local name = l6.data[v.textureinfo].texdata.name;
-		name = name.." "..tostring(v.w).." "..tostring(v.h).." "..tostring(v.plane.normal);
+		local name = l6.data[v.textureinfo];
+		--name = name.." "..tostring(v.w).." "..tostring(v.h).." "..tostring(v.plane.normal);
 		material_list[name] = material_list[name] or {};
 		--local str = tostring(v.plane.normal);
 		--material_list[name][str] = material_list[name][str] or {};
@@ -53,78 +73,37 @@ concommand.Add("drawmap", function(p,_,_,s)
 	
 	for _, coal in next, material_list, nil do
 		local triangles = {};
-	
-		local _mesh = Mesh();
+		
 		local mat = l6.data[coal[1].textureinfo];
+	
+		local _mesh = Mesh(mat);
 		
 		meshes[#meshes + 1] = _mesh;
 		materials[#meshes] = mat:GetMaterial(divisor);
 		
 		for i = 1, #coal do
 			local v = coal[i];
-					
-			local last,first;
-			local lastr,firstr; -- rotated
+			
+			local buf = {}; -- 3 vertices
+			
 			for i = 0, v.numedges - 1 do
 				
 				local edgeidx = l13.data[v.firstedge + i];
 				
 				local edgesidx = l12.data[edgeidx[1]];
 				
-				local edge1, edge2 = l3.data[edgesidx[0]], self:GetLump(3).data[edgesidx[1]];
+				local edge1, edge2 = l3.data[edgesidx[0]], l3.data[edgesidx[1]];
 				
-				local whatiwant = edgeidx[2] and edge1 or edge2;
-				local next = edgeidx[2] and edge2 or edge1;
-				if(not whatiwant) then break; end
-				
-				if(not first) then 
-					first = whatiwant; continue;
-				end
-				if(not last) then 
-					last = whatiwant; continue;
-				end
-				
-				local u,v;
-				u,v = mat:GenerateUV(first.x, first.y, first.z);
-				triangles[#triangles + 1] = {
-					pos = first/divisor,
-					u=u,v=v,
-				};
-				
-				u,v = mat:GenerateUV(last.x, last.y, last.z);
-				triangles[#triangles + 1] = {
-					pos = last/divisor,
-					u=u,v=v,
-				};
-				
-				u,v = mat:GenerateUV(whatiwant.x, whatiwant.y, whatiwant.z);
-				triangles[#triangles + 1] = {
-					pos = whatiwant/divisor,
-					u=u,v=v,
-				};
+				local first = edgeidx[2] and edge1 or edge2;
+				local second = edgeidx[2] and edge2 or edge1;
 				
 				
-				u,v = mat:GenerateUV(first.x, first.y, first.z);
-				triangles[#triangles + 1] = {
-					pos = first/divisor,
-					u=u,v=v,
-				};
-				
-				u,v = mat:GenerateUV(whatiwant.x, whatiwant.y, whatiwant.z);
-				triangles[#triangles + 1] = {
-					pos = whatiwant/divisor,
-					u=u,v=v,
-				};
-				
-				u,v = mat:GenerateUV(next.x, next.y, next.z);
-				triangles[#triangles + 1] = {
-					pos = next/divisor,
-					u=u,v=v,
-				};
+				local u,v = mat:GenerateUV(first.x, first.y, first.z);
+				buildtriangle(triangles, buf, first, u, v);
 				
 				
-				last = next;
-				lastr = next;
+				local u,v = mat:GenerateUV(second.x, second.y, second.z);
+				buildtriangle(triangles, buf, second, u, v);
 				
 			
 			end
@@ -176,9 +155,9 @@ hook.Add("PreDrawOpaqueRenderables", "", function()
 	local t = SysTime();
 	local et, mt;
 	ang.y = math.NormalizeAngle(ang.y + 0 * FrameTime());
-	--render.PushFilterMag(TEXFILTER.ANISOTROPIC);
-	--render.PushFilterMin(TEXFILTER.ANISOTROPIC);
-	--render.SetLightingMode(2);
+	render.PushFilterMag(TEXFILTER.ANISOTROPIC);
+	render.PushFilterMin(TEXFILTER.ANISOTROPIC);
+	render.SetLightingMode(2);
 		
 		local change_pos, change_ang;
 		change_ang = ang;
@@ -206,9 +185,9 @@ hook.Add("PreDrawOpaqueRenderables", "", function()
 			et = SysTime() - et;
 		cam.End3D();
 		
-	--render.SetLightingMode(0);
-	--render.PopFilterMin();
-	--render.PopFilterMag();
+	render.SetLightingMode(0);
+	render.PopFilterMin();
+	render.PopFilterMag();
 	
 	t = SysTime() - t;
 	
