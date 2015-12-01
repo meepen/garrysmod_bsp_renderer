@@ -4,7 +4,7 @@
 local meshes = {};
 local materials = {};
 local ents = {};
-local divisor = 25; -- 1/4 scale
+local divisor = 25; -- 1/25 scale
 local pos, ang;
 
 local function trinorm(p1,p2,p3)
